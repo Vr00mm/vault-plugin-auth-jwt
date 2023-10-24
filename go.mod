@@ -1,4 +1,4 @@
-module github.com/hashicorp/vault-plugin-auth-jwt
+module github.com/Vr00mm/vault-plugin-auth-jwt
 
 go 1.20
 
